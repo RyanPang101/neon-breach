@@ -1,5 +1,7 @@
 # Neon Breach: Rootkit
 
+**[Play it live](https://ryanpang101.github.io/neon-breach/)** — no install, just open the link.
+
 Cyberpunk survival roguelite. Canvas 2D, vanilla JS, zero dependencies, zero build step.
 
 ## Run it locally
