@@ -13,7 +13,7 @@ export const Save = {
     return this.data;
   },
   defaults() {
-    return { cores: 0, unlockedLoadouts: ['assault'], perks: {}, bestWave: 0, runsPlayed: 0 };
+    return { cores: 0, unlockedLoadouts: ['assault'], perks: {}, bestWave: 0, runsPlayed: 0, settings: { volume: 60, shake: true, flash: true } };
   },
   save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) {}

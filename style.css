@@ -34,6 +34,8 @@ button.mag:hover:not(:disabled){background:var(--mag);color:#040408;box-shadow:0
 .card.locked{cursor:not-allowed;opacity:.4;border-color:#555;}
 .card.locked:hover{transform:none;box-shadow:none;background:rgba(255,0,255,0.04);}
 .card.owned{border-color:var(--green);}
+.card.poor{opacity:.5;cursor:not-allowed;}
+.card.poor:hover{transform:none;box-shadow:none;background:rgba(255,0,255,0.04);}
 .card h3{color:var(--cyan);margin:0 0 6px;font-size:14px;}
 .card p{font-size:11px;margin:0;color:#aef;max-width:none;}
 .card .cost{color:var(--yellow);font-size:12px;margin-top:6px;display:block;}

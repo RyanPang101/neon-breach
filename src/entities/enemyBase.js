@@ -7,7 +7,7 @@ import { World } from '../core/world.js';
 import { burst } from '../systems/particles.js';
 import { updateStatus } from '../systems/status.js';
 
-export const ELITE_TRAITS = ['fast', 'explosive', 'reflect', 'vampiric'];
+export const ELITE_TRAITS = ['fast', 'explosive', 'regen'];
 
 export class EnemyBase {
   constructor(x, y, hp, radius, color, name) {
@@ -48,11 +48,16 @@ export class EnemyBase {
     EventBus.emit('damage:dealt', { x: this.x, y: this.y, amount: dealt, crit, exploit: wasExposed });
     if (this.hp <= 0 && !this.dead) {
       this.dead = true;
+      if (this.elite && this.trait === 'explosive' && World.player) {
+        AudioSys.explode(); burst(this.x, this.y, '#ffd700', 16, 200, 0.5);
+        if (dist(this, World.player) < 80) World.player.takeDamage(15);
+      }
       EventBus.emit('enemy:killed', { enemy: this, exploit: wasExposed });
     }
   }
   update(dt, player) {
     if (this.hitFlash > 0) this.hitFlash -= dt;
+    if (this.elite && this.trait === 'regen' && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.03 * dt);
     if (this.exposeTimer > 0) { this.exposeTimer -= dt; if (this.exposeTimer <= 0) this.exposed = false; }
     updateStatus(this, dt);
   }

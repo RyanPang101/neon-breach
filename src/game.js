@@ -41,7 +41,7 @@ export const Game = {
   runShardsEarned: 0, selectedLoadout: null,
   lastTime: 0, lastCoresEarned: 0,
   waveClearedHandled: false, bossJustDefeated: false,
-  overloadFlash: 0,
+  overloadFlash: 0, pendingLevelUps: 0, deathTimer: 0,
   _loadoutPick: null,
 
   init(loadoutId) {
@@ -56,7 +56,7 @@ export const Game = {
     clearDamageNumbers();
     this.wave = 0; this.bossActive = false; this.runShardsEarned = 0;
     this.waveClearedHandled = false; this.bossJustDefeated = false;
-    this.overloadFlash = 0;
+    this.overloadFlash = 0; this.pendingLevelUps = 0; this.deathTimer = 0;
     Camera.shake = 0; Camera.punch = 0;
     this.startNextWave();
   },
@@ -97,6 +97,8 @@ export const Game = {
     else if (edge === 2) { x = rand(0, W); y = H + 30; } else { x = -30; y = rand(0, H); }
     const e = new entry.cls(x, y, entry.waveMult);
     if (entry.elite) e.makeElite();
+    // Turrets never move, so one spawned off-canvas would be unreachable forever.
+    if (e instanceof Turret) { e.x = clamp(x, e.r + 20, W - e.r - 20); e.y = clamp(y, e.r + 20, H - e.r - 20); }
     this.spawnEnemyObj(e);
   },
 
@@ -138,9 +140,7 @@ export const Game = {
     }
   },
 
-  onPlayerDeath() {
-    setTimeout(() => { this.state = 'gameover'; this.finishRun(); EventBus.emit('ui:showGameOver'); }, 450);
-  },
+  onPlayerDeath() { this.deathTimer = 0.45; },
   onWin() {
     this.finishRun();
     EventBus.emit('ui:showWin');
@@ -155,7 +155,7 @@ export const Game = {
   },
 
   requestLevelUp() {
-    if (this.state !== 'playing') return;
+    if (this.state !== 'playing') { this.pendingLevelUps++; return; }
     this.state = 'levelup';
     AudioSys.levelUp();
     const n = 3 + (this.player.bonusUpgradeChoice > 0 ? 1 : 0);
@@ -166,6 +166,7 @@ export const Game = {
   applyUpgrade(upgrade) {
     upgrade.apply(this.player);
     this.state = 'playing';
+    if (this.pendingLevelUps > 0) { this.pendingLevelUps--; this.requestLevelUp(); }
   },
 
   openShop() {
@@ -188,6 +189,11 @@ export const Game = {
   update(dt) {
     Camera.update(dt);
     if (this.overloadFlash > 0) this.overloadFlash -= dt;
+    // Game clock instead of setTimeout, so pause and restart can't race the death screen.
+    if (this.deathTimer > 0 && this.state === 'playing') {
+      this.deathTimer -= dt;
+      if (this.deathTimer <= 0) { this.state = 'gameover'; this.finishRun(); EventBus.emit('ui:showGameOver'); }
+    }
     if (Camera.hitstop > 0) return; // brief freeze-frame on big hits
     if (this.state !== 'playing') return;
     World.enemies = this.enemyPool;
@@ -201,6 +207,7 @@ export const Game = {
     for (const e of this.enemyPool) if (!e.dead) e.update(dt, this.player);
     this.enemyPool = this.enemyPool.filter(e => !e.dead);
     World.enemies = this.enemyPool;
+    this.separateEnemies();
 
     updateProjectiles(dt);
     // homing steer
@@ -267,6 +274,20 @@ export const Game = {
       this.waveClearedHandled = true;
       this.bossActive = false;
       this.handleWaveClear();
+    }
+  },
+
+  // Moving enemies push each other apart so a pack surrounds you instead of
+  // collapsing onto one pixel. O(n^2) is fine at this enemy count; swap for a grid if it grows.
+  separateEnemies() {
+    const a = this.enemyPool;
+    for (let i = 0; i < a.length; i++) {
+      const p = a[i]; if (!p.speed) continue;
+      for (let j = i + 1; j < a.length; j++) {
+        const q = a[j]; if (!q.speed) continue;
+        const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 0.01, min = p.r + q.r;
+        if (d < min) { const push = (min - d) / 2, nx = dx / d, ny = dy / d; p.x -= nx * push; p.y -= ny * push; q.x += nx * push; q.y += ny * push; }
+      }
     }
   },
 

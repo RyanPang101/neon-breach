@@ -115,8 +115,8 @@ export class Player {
       if (totalPellets === 1) spreadOffset = 0;
       else spreadOffset = (i / (totalPellets - 1) - 0.5) * (w.spread + 0.15);
       const ang = this.angle + spreadOffset + (w.spread ? rand(-w.spread / 2, w.spread / 2) : 0);
-      const nx = this.x + Math.cos(ang) * (this.r + 6);
-      const ny = this.y + Math.sin(ang) * (this.r + 6);
+      // Spawn at the player's center: a muzzle offset put shots past enemies standing on top of you.
+      const nx = this.x, ny = this.y;
       let dmg = w.dmg * this.dmgMult;
       let crit = Math.random() < this.critChance;
       if (crit) { dmg *= 2; AudioSys.crit(); }

@@ -71,6 +71,7 @@ function renderSafehouse() {
         renderSafehouse();
       };
     } else { div.classList.add('locked'); }
+    if (!locked && Save.data.cores < item.cost) div.classList.add('poor');
     container.appendChild(div);
   });
 }
@@ -81,7 +82,8 @@ function renderShop() {
   container.innerHTML = '';
   shopItemRegistry.list().forEach(item => {
     const owned = !item.repeatable && Game.player._boughtShop && Game.player._boughtShop.has(item.id);
-    const div = document.createElement('div'); div.className = 'card' + (owned ? ' owned' : '');
+    const div = document.createElement('div');
+    div.className = 'card' + (owned ? ' owned' : '') + (!owned && Game.player.shards < item.cost ? ' poor' : '');
     div.innerHTML = `<h3>${item.name}</h3><p>${item.desc}</p><span class="cost">◆ ${item.cost}</span>`;
     if (owned) { div.innerHTML += '<p style="color:#3f3;">OWNED</p>'; div.onclick = null; div.classList.add('locked'); }
     else {
@@ -152,9 +154,13 @@ export function initUI() {
     Game.state = 'title';
     renderTitle(); show('titleScreen');
   };
-  document.getElementById('volSlider').oninput = (e) => AudioSys.setVolume(e.target.value / 100);
-  document.getElementById('shakeToggle').onchange = (e) => Settings.shakeEnabled = e.target.checked;
-  document.getElementById('flashToggle').onchange = (e) => Settings.flashEnabled = e.target.checked;
+  const vol = document.getElementById('volSlider'), shake = document.getElementById('shakeToggle'), flash = document.getElementById('flashToggle');
+  const st0 = Save.data.settings;
+  vol.value = st0.volume; shake.checked = st0.shake; flash.checked = st0.flash;
+  AudioSys.setVolume(st0.volume / 100); Settings.shakeEnabled = st0.shake; Settings.flashEnabled = st0.flash;
+  vol.oninput = (e) => { AudioSys.setVolume(e.target.value / 100); Save.data.settings.volume = +e.target.value; Save.save(); };
+  shake.onchange = (e) => { Settings.shakeEnabled = Save.data.settings.shake = e.target.checked; Save.save(); };
+  flash.onchange = (e) => { Settings.flashEnabled = Save.data.settings.flash = e.target.checked; Save.save(); };
 
   document.getElementById('restartBtn').onclick = restart;
   document.getElementById('restartBtn2').onclick = restart;
