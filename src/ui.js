@@ -116,7 +116,8 @@ function renderLevelUp({ level, choices }) {
   choices.forEach(u => {
     const div = document.createElement('div'); div.className = 'card';
     div.innerHTML = `<span class="tag ${u.tag}">${u.tag}</span><h3>${u.name}</h3><p>${u.desc}</p>`;
-    div.onclick = () => { Game.applyUpgrade(u); hide('levelUpScreen'); };
+    // Hide before applying: applyUpgrade may immediately open the next queued level-up.
+    div.onclick = () => { hide('levelUpScreen'); Game.applyUpgrade(u); };
     container.appendChild(div);
   });
 }

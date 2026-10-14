@@ -408,9 +408,10 @@ export const Game = {
   loop(time) {
     if (!this.lastTime) this.lastTime = time;
     let dt = (time - this.lastTime) / 1000; dt = Math.min(dt, 0.05); this.lastTime = time;
-    this.update(dt);
-    this.draw();
+    // Schedule the next frame first and contain errors, so one bad frame can't freeze the game for good.
     requestAnimationFrame(t => this.loop(t));
+    try { this.update(dt); this.draw(); }
+    catch (e) { if ((this.frameErrors = (this.frameErrors || 0) + 1) <= 5) console.error('frame error', e); }
   },
 };
 
