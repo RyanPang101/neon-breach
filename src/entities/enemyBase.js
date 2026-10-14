@@ -4,6 +4,7 @@ import { AudioSys } from '../core/audio.js';
 import { Camera } from '../core/camera.js';
 import { EventBus } from '../core/eventBus.js';
 import { World } from '../core/world.js';
+import { PAL } from '../core/palette.js';
 import { burst } from '../systems/particles.js';
 import { updateStatus } from '../systems/status.js';
 
@@ -33,7 +34,7 @@ export class EnemyBase {
     if (!this.exposed) {
       this.exposed = true;
       AudioSys.exploitPing();
-      burst(this.x, this.y, '#fff', 10, 100, 0.35);
+      burst(this.x, this.y, PAL.amber, 10, 100, 0.35);
       EventBus.emit('enemy:exposed', { enemy: this });
     }
   }
@@ -42,14 +43,14 @@ export class EnemyBase {
     const dealt = amount * (wasExposed ? this.exposeMult : 1);
     this.hp -= dealt;
     this.hitFlash = 0.1;
-    burst(this.x, this.y, crit ? '#fff' : this.color, crit ? 8 : 4, crit ? 120 : 80, 0.25);
+    burst(this.x, this.y, crit ? PAL.bone : this.color, crit ? 8 : 4, crit ? 120 : 80, 0.25);
     if (crit) Camera.addPunch(0.02);
     if (wasExposed) AudioSys.exploitHit();
     EventBus.emit('damage:dealt', { x: this.x, y: this.y, amount: dealt, crit, exploit: wasExposed });
     if (this.hp <= 0 && !this.dead) {
       this.dead = true;
       if (this.elite && this.trait === 'explosive' && World.player) {
-        AudioSys.explode(); burst(this.x, this.y, '#ffd700', 16, 200, 0.5);
+        AudioSys.explode(); burst(this.x, this.y, PAL.red, 16, 200, 0.5);
         if (dist(this, World.player) < 80) World.player.takeDamage(15);
       }
       EventBus.emit('enemy:killed', { enemy: this, exploit: wasExposed });
@@ -65,8 +66,8 @@ export class EnemyBase {
   collidesWithPlayer(player) { return dist(this, player) < this.r + player.r; }
   eliteRing() {
     if (!this.elite) return;
-    ctx.save(); ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = '#ffd700';
-    ctx.beginPath(); ctx.arc(this.x, this.y, this.r + 5, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.strokeStyle = PAL.bone; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r + 6, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   }
   // Kinetic exploit telegraph: a pulsing bone-white wireframe bracket, drawn
   // uniformly for every enemy type (and bosses) from Game.draw() rather than
@@ -76,10 +77,13 @@ export class EnemyBase {
     const t = performance.now() / 1000;
     const pulse = 0.55 + Math.sin(t * 14) * 0.4;
     ctx.save();
+    ctx.globalAlpha = 0.12 + pulse * 0.1;
+    ctx.fillStyle = PAL.amber;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r + 7, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = pulse;
-    ctx.strokeStyle = '#f5f0e6';
+    ctx.strokeStyle = PAL.bone;
     ctx.lineWidth = 2;
-    ctx.shadowBlur = 14; ctx.shadowColor = '#ffb020';
+    ctx.shadowBlur = 10; ctx.shadowColor = PAL.amber;
     const s = this.r + 9, b = 7;
     const corners = [[-s, -s, 1, 1], [s, -s, -1, 1], [-s, s, 1, -1], [s, s, -1, -1]];
     ctx.beginPath();

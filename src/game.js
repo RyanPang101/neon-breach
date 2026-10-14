@@ -4,6 +4,8 @@
 // those modules calling back into Game directly.
 import { ctx, W, H } from './core/canvas.js';
 import { CONFIG } from './config.js';
+import { PAL, FONT } from './core/palette.js';
+import { poly } from './core/draw.js';
 import { Save } from './core/save.js';
 import { AudioSys } from './core/audio.js';
 import { Camera } from './core/camera.js';
@@ -42,6 +44,7 @@ export const Game = {
   lastTime: 0, lastCoresEarned: 0,
   waveClearedHandled: false, bossJustDefeated: false,
   overloadFlash: 0, pendingLevelUps: 0, deathTimer: 0,
+  stats: { kills: 0, exploitKills: 0 },
   _loadoutPick: null,
 
   init(loadoutId) {
@@ -57,6 +60,7 @@ export const Game = {
     this.wave = 0; this.bossActive = false; this.runShardsEarned = 0;
     this.waveClearedHandled = false; this.bossJustDefeated = false;
     this.overloadFlash = 0; this.pendingLevelUps = 0; this.deathTimer = 0;
+    this.stats = { kills: 0, exploitKills: 0 };
     Camera.shake = 0; Camera.punch = 0;
     this.startNextWave();
   },
@@ -106,6 +110,7 @@ export const Game = {
     burst(enemy.x, enemy.y, enemy.color, 14, 160, 0.5);
     Camera.addShake(enemy instanceof BossBase ? 16 : 3);
     if (enemy instanceof BossBase) Camera.addHitstop(0.12);
+    this.stats.kills++; if (exploit) this.stats.exploitKills++;
     if (exploit && this.player) {
       // Chain Exploit: refund Overload cooldown on an exploit kill.
       if (this.player.overloadRefund) this.player.overloadCooldownTimer = Math.max(0, this.player.overloadCooldownTimer - this.player.overloadRefund);
@@ -147,6 +152,7 @@ export const Game = {
   },
   finishRun() {
     const cores = Math.round(this.runShardsEarned * 0.4 + this.wave * 3);
+    this.prevBestWave = Save.data.bestWave; // kept so the post-mortem can compare against the old record
     Save.data.cores += cores;
     Save.data.bestWave = Math.max(Save.data.bestWave, this.wave);
     Save.data.runsPlayed++;
@@ -303,15 +309,19 @@ export const Game = {
   draw() {
     ctx.save();
     Camera.apply();
-    ctx.fillStyle = '#040408'; ctx.fillRect(-40, -40, W + 80, H + 80);
-    // parallax grid + faint skyline
+    ctx.fillStyle = PAL.void; ctx.fillRect(-40, -40, W + 80, H + 80);
+    // Sector 01, Legacy Archives: matte floor, three slow depth layers of shelving, machined arena frame.
     const t = performance.now() / 1000;
-    ctx.strokeStyle = 'rgba(0,255,255,0.05)'; ctx.lineWidth = 1;
-    const offset = (t * 8) % 40;
-    for (let x = -40 + offset; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-    ctx.fillStyle = 'rgba(160,0,255,0.05)';
-    for (let i = 0; i < 8; i++) { const bw = 60; const bx = (i * 140 - (t * 6) % 140); ctx.fillRect(bx, H - 100 - ((i * 37) % 80), bw, 200); }
+    ctx.fillStyle = PAL.floor; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = PAL.concrete; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += 48) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y <= H; y += 48) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    for (const [speed, col, h] of [[3, '#191918', 130], [6, '#1d1d1b', 90], [10, '#222220', 56]]) {
+      ctx.fillStyle = col;
+      for (let i = -1; i < 9; i++) ctx.fillRect(i * 130 - ((t * speed) % 130), H - h, 86, h);
+    }
+    poly([[22, 6], [W - 22, 6], [W - 6, 22], [W - 6, H - 22], [W - 22, H - 6], [22, H - 6], [6, H - 22], [6, 22]], null, PAL.concrete, 3);
 
     for (const p of this.pickups) p.draw();
     for (const e of this.enemyPool) { if (e instanceof BossBase) e.drawTelegraphRing(); e.draw(); e.drawExploitTelegraph(); }
@@ -330,28 +340,29 @@ export const Game = {
     this.drawOverloadFlash();
   },
 
-  // Kinetic "eye-line" HUD: HP and both ability cooldowns cluster right
-  // below the player instead of screen corners, since looking away from
-  // your character to check a cooldown is how you die in this game.
+  // Eye-line HUD as thin segmented rings around the player: HP as 12 segments,
+  // dash on the left arc, Overload on the right arc. Nothing needed mid-fight is off the eyeline.
   drawPlayerHud() {
-    const p = this.player;
-    const cx = p.x, cy = p.y + 26;
-    ctx.save();
-    ctx.translate(cx, cy);
-    const w = 42, h = 5;
-    ctx.fillStyle = 'rgba(20,0,10,0.75)'; ctx.fillRect(-w / 2, 0, w, h);
-    ctx.fillStyle = p.hp / p.maxHp < 0.3 ? '#f33' : '#0ff';
-    ctx.fillRect(-w / 2, 0, w * clamp(p.hp / p.maxHp, 0, 1), h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(-w / 2, 0, w, h);
-
-    const pip = (dx, ready, color) => {
-      ctx.beginPath(); ctx.arc(dx, h + 9, 5, 0, Math.PI * 2);
-      ctx.fillStyle = ready ? color : 'rgba(255,255,255,0.12)';
-      ctx.fill();
-      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.shadowBlur = ready ? 8 : 0; ctx.shadowColor = color; ctx.stroke();
+    const p = this.player, N = 12, step = Math.PI * 2 / N;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.lineCap = 'butt';
+    const lit = Math.ceil(N * clamp(p.hp / p.maxHp, 0, 1)), low = p.hp / p.maxHp < 0.3;
+    ctx.lineWidth = 3;
+    for (let i = 0; i < N; i++) {
+      const a = -Math.PI / 2 + i * step;
+      ctx.strokeStyle = i < lit ? (low ? PAL.red : PAL.bone) : PAL.concrete;
+      ctx.beginPath(); ctx.arc(0, 0, 23, a + 0.07, a + step - 0.07); ctx.stroke();
+    }
+    const arc = (from, frac, color, ready) => {
+      ctx.lineWidth = 2; ctx.strokeStyle = PAL.concrete;
+      ctx.beginPath(); ctx.arc(0, 0, 30, from + 0.1, from + Math.PI - 0.1); ctx.stroke();
+      if (frac <= 0) return;
+      ctx.strokeStyle = color; if (ready) { ctx.shadowBlur = 8; ctx.shadowColor = color; }
+      ctx.beginPath(); ctx.arc(0, 0, 30, from + 0.1, from + 0.1 + (Math.PI - 0.2) * clamp(frac, 0, 1)); ctx.stroke();
+      ctx.shadowBlur = 0;
     };
-    pip(-9, p.dashCooldownTimer <= 0, '#0ff');
-    pip(9, p.overloadCooldownTimer <= 0, '#ff2d4d');
+    const dashTotal = CONFIG.dashCooldown * p.dashCdMult, ovTotal = p.overloadMax * p.overloadCdMult;
+    arc(Math.PI / 2, 1 - p.dashCooldownTimer / dashTotal, p.dashCooldownTimer <= 0 ? PAL.bone : PAL.ash, p.dashCooldownTimer <= 0);
+    arc(-Math.PI / 2, 1 - p.overloadCooldownTimer / ovTotal, PAL.amber, p.overloadCooldownTimer <= 0);
     ctx.restore();
   },
 
@@ -360,35 +371,36 @@ export const Game = {
     const t = clamp(this.overloadFlash / 0.6, 0, 1);
     ctx.save();
     ctx.globalAlpha = t * 0.85;
-    ctx.strokeStyle = '#ff2d4d'; ctx.lineWidth = 14; ctx.shadowBlur = 30; ctx.shadowColor = '#ff2d4d';
+    ctx.strokeStyle = PAL.amber; ctx.lineWidth = 14; ctx.shadowBlur = 24; ctx.shadowColor = PAL.amber;
     ctx.strokeRect(7, 7, W - 14, H - 14);
-    ctx.globalAlpha = t * 0.5;
-    ctx.fillStyle = '#ff2d4d';
+    ctx.globalAlpha = t * 0.5; ctx.shadowBlur = 0;
+    ctx.fillStyle = PAL.amber;
     ctx.fillRect(0, H * (1 - t) - 2, W, 4);
     ctx.restore();
   },
 
+  // Screen edges hold context only: sector, wave, level, currency, boss.
   drawUI() {
     if (this.state !== 'playing' && this.state !== 'levelup' && this.state !== 'shop') return;
     const p = this.player;
-    ctx.fillStyle = '#0ff'; ctx.font = '14px monospace';
-    ctx.fillText(`LEVEL ${p.level}`, 20, 26);
-    ctx.fillStyle = '#003'; ctx.fillRect(20, 34, 220, 10);
-    ctx.fillStyle = '#0ff'; ctx.fillRect(20, 34, 220 * clamp(p.xp / p.xpToNext, 0, 1), 10);
-    ctx.strokeStyle = '#0ff'; ctx.strokeRect(20, 34, 220, 10);
-
-    ctx.fillText(`WAVE ${this.wave}${this.bossWaveNow() ? ' (BOSS)' : ''}`, 20, 64);
-    ctx.fillStyle = '#ff0'; ctx.fillText(`◆ SHARDS: ${p.shards}`, 20, 82);
-    ctx.fillStyle = '#f6f'; ctx.fillText(`CRIT ${(p.critChance * 100) | 0}%`, 790, 30);
+    ctx.fillStyle = PAL.bone; ctx.font = `800 20px ${FONT.display}`;
+    ctx.fillText(`SECTOR 01 / WAVE ${this.wave}${this.bossWaveNow() ? ' / BOSS' : ''}`, 24, 34);
+    ctx.font = `500 12px ${FONT.mono}`; ctx.fillStyle = PAL.ash;
+    ctx.fillText(`LV ${String(p.level).padStart(2, '0')}`, 24, 54);
+    const segs = 20, filled = Math.floor(segs * clamp(p.xp / p.xpToNext, 0, 1));
+    for (let i = 0; i < segs; i++) { ctx.fillStyle = i < filled ? PAL.bone : PAL.concrete; ctx.fillRect(62 + i * 8, 46, 6, 8); }
+    ctx.textAlign = 'right';
+    ctx.fillStyle = PAL.ash; ctx.fillText(`CRIT ${(p.critChance * 100) | 0}%`, W - 24, 30);
+    ctx.fillStyle = PAL.amber; ctx.font = `500 16px ${FONT.mono}`; ctx.fillText(`◆ ${p.shards}`, W - 24, H - 22);
+    ctx.textAlign = 'left';
 
     const boss = this.enemyPool.find(e => e instanceof BossBase && !e.dead);
     if (boss) {
-      ctx.fillStyle = '#300'; ctx.fillRect(W / 2 - 220, H - 42, 440, 18);
-      ctx.fillStyle = boss.exposed ? '#fff' : '#f33';
-      ctx.fillRect(W / 2 - 220, H - 42, 440 * clamp(boss.hp / boss.maxHp, 0, 1), 18);
-      ctx.strokeStyle = '#f33'; ctx.strokeRect(W / 2 - 220, H - 42, 440, 18);
-      ctx.fillStyle = '#fff'; ctx.font = '13px monospace'; ctx.textAlign = 'center';
-      ctx.fillText(boss.name.toUpperCase() + (boss.exposed ? ' — EXPOSED!' : ''), W / 2, H - 48);
+      const bx = W / 2 - 220, by = H - 40;
+      ctx.fillStyle = PAL.concrete; ctx.fillRect(bx, by, 440, 10);
+      ctx.fillStyle = boss.exposed ? PAL.amber : PAL.red; ctx.fillRect(bx, by, 440 * clamp(boss.hp / boss.maxHp, 0, 1), 10);
+      ctx.fillStyle = PAL.bone; ctx.font = `800 16px ${FONT.display}`; ctx.textAlign = 'center';
+      ctx.fillText(boss.name.toUpperCase() + (boss.exposed ? '  //  EXPOSED' : ''), W / 2, by - 8);
       ctx.textAlign = 'left';
     }
   },

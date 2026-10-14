@@ -4,6 +4,7 @@ import { Input } from '../core/input.js';
 import { AudioSys } from '../core/audio.js';
 import { Camera } from '../core/camera.js';
 import { Settings } from '../core/settings.js';
+import { PAL } from '../core/palette.js';
 import { EventBus } from '../core/eventBus.js';
 import { CONFIG } from '../config.js';
 import { spawnProjectile } from '../systems/projectiles.js';
@@ -133,7 +134,7 @@ export class Player {
     this.invuln = 0.5; this.hurtFlash = 0.3;
     AudioSys.hurt();
     Camera.addShake(6); Camera.addPunch(0.03);
-    burst(this.x, this.y, '#f33', 10, 150, 0.4);
+    burst(this.x, this.y, PAL.red, 10, 150, 0.4);
     if (this.hp <= 0) {
       this.hp = 0; this.alive = false; AudioSys.death();
       Camera.addShake(20); Camera.addHitstop(0.15);
@@ -143,14 +144,17 @@ export class Player {
   draw() {
     ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
     if (this.invuln > 0 && Math.floor(this.invuln * 20) % 2 === 0) ctx.globalAlpha = 0.4;
-    ctx.shadowBlur = 16; ctx.shadowColor = '#0ff'; ctx.fillStyle = '#0ff';
+    // matte bone hull; the only light on it is the amber that means "your weapon"
+    ctx.fillStyle = PAL.bone;
     ctx.beginPath();
     ctx.moveTo(18, 0); ctx.lineTo(-12, 10); ctx.lineTo(-6, 0); ctx.lineTo(-12, -10);
     ctx.closePath(); ctx.fill();
+    ctx.fillStyle = PAL.amber; ctx.fillRect(10, -1.5, 8, 3);
     ctx.restore(); ctx.globalAlpha = 1;
     if (this.hurtFlash > 0 && Settings.flashEnabled) {
-      ctx.save(); ctx.globalAlpha = clamp(this.hurtFlash, 0, 0.5) * 0.6;
-      ctx.fillStyle = '#f33'; ctx.fillRect(0, 0, W, H); ctx.restore();
+      // damage reads as a red frame, not a full-screen wash
+      ctx.save(); ctx.globalAlpha = clamp(this.hurtFlash, 0, 0.5) * 1.4;
+      ctx.strokeStyle = PAL.red; ctx.lineWidth = 22; ctx.strokeRect(0, 0, W, H); ctx.restore();
     }
   }
 }

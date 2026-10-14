@@ -10,16 +10,19 @@ loadoutRegistry.register('assault', {
   desc: 'Balanced rapid-fire. Forgiving, reliable, easy to build around.',
   weapon: { fireRate: 6.5, dmg: 9, pellets: 1, spread: 0.03, pierce: 0, projSpeed: 560, color: '#0ff' },
   startHp: 100,
+  favors: 'Strafe windows: punish a Hunter the moment it flips direction.',
 });
 loadoutRegistry.register('sniper', {
   name: 'Deep Scanner', unlockCost: 40,
   desc: 'Slow, hard-hitting, pierces through lines of enemies. High skill ceiling.',
   weapon: { fireRate: 1.6, dmg: 42, pellets: 1, spread: 0.0, pierce: 3, projSpeed: 900, color: '#f0f' },
   startHp: 85,
+  favors: 'Telegraph windows: a Sniper is open the whole time it aims. Pierce lines them up.',
 });
 loadoutRegistry.register('shotgun', {
   name: 'Breach Cannon', unlockCost: 40,
   desc: 'Five-pellet spread, devastating up close, weak at range.',
   weapon: { fireRate: 2.2, dmg: 11, pellets: 5, spread: 0.32, pierce: 0, projSpeed: 480, color: '#ff0' },
   startHp: 110,
+  favors: 'Close windows: Bomber fuses and Drone contact swings, at point-blank.',
 });

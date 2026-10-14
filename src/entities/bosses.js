@@ -7,6 +7,7 @@ import { angleTo, clamp, rand } from '../core/utils.js';
 import { AudioSys } from '../core/audio.js';
 import { EventBus } from '../core/eventBus.js';
 import { createRegistry } from '../core/registry.js';
+import { PAL } from '../core/palette.js';
 import { spawnProjectile } from '../systems/projectiles.js';
 import { BossBase } from './bossBase.js';
 import { Shielded } from './enemies.js';
@@ -23,7 +24,8 @@ function makeMainframeGuardian(wave) {
       const a = angleTo(b, player); b.chargeVx = Math.cos(a) * 700; b.chargeVy = Math.sin(a) * 700; b.charging = 0.35;
     } },
   ];
-  const boss = new BossBase(W / 2, H / 2 - 150, 420 * hpScale, 40, '#f33', 'Mainframe Guardian', attacks);
+  const boss = new BossBase(W / 2, H / 2 - 150, 420 * hpScale, 40, PAL.ash, 'Mainframe Guardian', attacks);
+  boss.sides = 8;
   const baseUpdate = boss.update.bind(boss);
   boss.update = function (dt, player) {
     if (this.charging > 0) {
@@ -50,7 +52,8 @@ function makeFirewallSentinel(wave) {
       b.expose(1.2); // vulnerable right after summoning
     } },
   ];
-  const boss = new BossBase(W / 2, H / 2 - 150, 520 * hpScale, 42, '#0af', 'Firewall Sentinel', attacks);
+  const boss = new BossBase(W / 2, H / 2 - 150, 520 * hpScale, 42, PAL.ash, 'Firewall Sentinel', attacks);
+  boss.sides = 6;
   boss._wave = wave;
   const baseUpdate = boss.update.bind(boss);
   boss.update = function (dt, player) {
@@ -78,7 +81,8 @@ function makeRootDaemon(wave) {
       b.enraged = true; b.enrageTimer = 4; AudioSys.explode();
     } },
   ];
-  const boss = new BossBase(W / 2, H / 2 - 150, 700 * hpScale, 46, '#f0f', 'Root Daemon', attacks);
+  const boss = new BossBase(W / 2, H / 2 - 150, 700 * hpScale, 46, PAL.ash, 'Root Daemon', attacks);
+  boss.sides = 10;
   const baseUpdate = boss.update.bind(boss);
   boss.update = function (dt, player) {
     if (this.enrageTimer > 0) {

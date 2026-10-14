@@ -5,6 +5,7 @@ import { ctx } from '../core/canvas.js';
 import { makePool } from '../core/pool.js';
 import { rand, clamp } from '../core/utils.js';
 import { EventBus } from '../core/eventBus.js';
+import { PAL, FONT } from '../core/palette.js';
 
 const pool = makePool(
   () => ({ x: 0, y: 0, vy: 0, text: '', color: '#fff', size: 12, life: 0, maxLife: 0, dead: false }),
@@ -32,9 +33,8 @@ export function drawDamageNumbers() {
   for (const n of pool.active) {
     const t = clamp(n.life / n.maxLife, 0, 1);
     ctx.globalAlpha = t;
-    ctx.font = `bold ${n.size}px monospace`;
+    ctx.font = `500 ${n.size}px ${FONT.mono}`;
     ctx.fillStyle = n.color;
-    ctx.shadowBlur = 6; ctx.shadowColor = n.color;
     ctx.fillText(n.text, n.x, n.y);
   }
   ctx.restore();
@@ -44,7 +44,7 @@ export function clearDamageNumbers() { pool.active.length = 0; }
 
 EventBus.on('damage:dealt', ({ x, y, amount, crit, exploit }) => {
   const text = Math.round(amount).toString();
-  if (exploit) spawn(x, y - 10, 'EXPLOIT ' + text, '#ffb020', 15, 0.9);
-  else if (crit) spawn(x, y - 10, text, '#ff0', 14, 0.75);
-  else spawn(x, y - 10, text, '#9ef', 11, 0.6);
+  if (exploit) spawn(x, y - 10, 'EXPLOIT ' + text, PAL.amber, 15, 0.9);
+  else if (crit) spawn(x, y - 10, text, PAL.bone, 14, 0.75);
+  else spawn(x, y - 10, text, PAL.ash, 11, 0.6);
 });

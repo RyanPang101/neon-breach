@@ -6,6 +6,8 @@
 import { ctx } from '../core/canvas.js';
 import { angleTo, clamp, rand } from '../core/utils.js';
 import { AudioSys } from '../core/audio.js';
+import { PAL } from '../core/palette.js';
+import { poly, ngon, bodyStyle } from '../core/draw.js';
 import { EnemyBase } from './enemyBase.js';
 
 export class BossBase extends EnemyBase {
@@ -14,6 +16,23 @@ export class BossBase extends EnemyBase {
     this.attacks = attacks;
     this.state = 'idle'; this.stateTimer = rand(0.8, 1.4); this.currentAttack = null;
     this.spin = 0;
+    this.sides = 8; // set per boss in bosses.js so each has its own silhouette
+  }
+  // Two counter-rotating armor rings around a core. The core opens up when exposed.
+  draw() {
+    const r = this.r, s = bodyStyle(this);
+    ctx.save(); ctx.translate(this.x, this.y);
+    ctx.save(); ctx.rotate(this.spin * 0.25);
+    poly(ngon(this.sides, r, Math.PI / this.sides), s.fill, s.stroke, 4);
+    ctx.restore();
+    ctx.save(); ctx.rotate(-this.spin * 0.4);
+    poly(ngon(this.sides, r * 0.62), PAL.void, this.exposed ? PAL.amber : PAL.bone, 2);
+    ctx.restore();
+    const hot = this.state === 'telegraph';
+    ctx.fillStyle = this.exposed ? PAL.amber : (hot ? PAL.red : PAL.redDim);
+    const cr = r * (this.exposed ? 0.3 : 0.2) + Math.sin(this.spin * 6) * 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
   pickAttack() {
     const total = this.attacks.reduce((s, a) => s + a.weight, 0);
@@ -49,7 +68,7 @@ export class BossBase extends EnemyBase {
   drawTelegraphRing() {
     if (this.state !== 'telegraph') return;
     const t = 1 - clamp(this.stateTimer / (this.currentAttack ? this.currentAttack.telegraph : 1), 0, 1);
-    ctx.save(); ctx.strokeStyle = 'rgba(255,60,60,' + (0.4 + 0.4 * Math.sin(t * 20)) + ')';
+    ctx.save(); ctx.strokeStyle = PAL.red; ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t * 20);
     ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(this.x, this.y, this.r + 14, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   }
 }

@@ -1,5 +1,7 @@
 import { ctx, W, H } from '../core/canvas.js';
 import { makePool } from '../core/pool.js';
+import { PAL } from '../core/palette.js';
+import { poly } from '../core/draw.js';
 
 const projPool = makePool(
   () => ({ x: 0, y: 0, vx: 0, vy: 0, owner: '', dmg: 0, color: '#fff', pierce: 0, hitSet: null, radius: 5, dead: false, crit: false, effect: null, homing: false }),
@@ -25,13 +27,20 @@ export function updateProjectiles(dt) {
   projPool.reclaim();
 }
 export function drawProjectiles() {
+  // Team-coded so a bullet storm stays parseable: yours are thin amber streaks,
+  // theirs are fat red diamonds. The weapon's own color field is not used for drawing.
   for (const pr of projPool.active) {
-    ctx.save();
-    ctx.shadowBlur = pr.crit ? 20 : 12;
-    ctx.shadowColor = pr.crit ? '#fff' : pr.color;
-    ctx.fillStyle = pr.crit ? '#fff' : pr.color;
-    ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    if (pr.owner === 'player') {
+      ctx.strokeStyle = pr.crit ? PAL.bone : PAL.amber;
+      ctx.lineWidth = pr.crit ? 3 : 2;
+      ctx.beginPath(); ctx.moveTo(pr.x - pr.vx * 0.03, pr.y - pr.vy * 0.03); ctx.lineTo(pr.x, pr.y); ctx.stroke();
+    } else {
+      const a = Math.atan2(pr.vy, pr.vx), r = pr.radius + 2;
+      ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(a);
+      ctx.shadowBlur = 6; ctx.shadowColor = PAL.red;
+      poly([[r * 1.3, 0], [0, r], [-r * 1.3, 0], [0, -r]], PAL.red);
+      ctx.restore();
+    }
   }
 }
 export function clearProjectiles() { projPool.active.length = 0; }

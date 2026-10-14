@@ -5,7 +5,7 @@ const AudioSys = (() => {
   let volume = 0.6;
 
   function ensure() {
-    if (actx) return;
+    if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
     actx = new (window.AudioContext || window.webkitAudioContext)();
     master = actx.createGain(); master.gain.value = volume; master.connect(actx.destination);
     musicGain = actx.createGain(); musicGain.gain.value = 0; musicGain.connect(master);
@@ -69,6 +69,10 @@ const AudioSys = (() => {
     bossTelegraph: () => tone(500, 0.3, 'square', 0.06, 900),
     death: () => tone(200, 0.5, 'sawtooth', 0.15, 40),
     crit: () => tone(1500, 0.08, 'square', 0.07, 2200),
+    // UI family: dry, mechanical, short. Never tonal except confirm.
+    uiHover: () => tone(1400, 0.03, 'square', 0.025),
+    uiClick: () => { tone(220, 0.05, 'square', 0.06); tone(880, 0.03, 'square', 0.03); },
+    uiDeny: () => tone(110, 0.14, 'sawtooth', 0.07, 70),
     exploitPing: () => tone(1800, 0.12, 'square', 0.06, 2600),
     exploitHit: () => { tone(2200, 0.07, 'square', 0.08, 3200); tone(1100, 0.05, 'sine', 0.05); },
     overload: () => { tone(180, 0.5, 'sawtooth', 0.16, 900); noiseBurst(0.25, 0.08); },
